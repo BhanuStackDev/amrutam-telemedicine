@@ -58,18 +58,20 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
+          cache-dependency-path: requirements.lock.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install -r requirements.lock.txt
+          pip install -e . --no-deps
 
       - name: Compile
         run: |
@@ -81,8 +83,8 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -q --cov=app --cov-report=term-missing
+          pytest -vv --cov=app --cov-report=term-missing
 
       - name: Dependency audit
         run: |
-          pip-audit
+          pip-audit -r requirements.lock.txt
