@@ -1,4 +1,3 @@
-@'
 # Amrutam Telemedicine Backend
 
 Production-grade telemedicine backend built with FastAPI, PostgreSQL, Redis and containerized infrastructure.
