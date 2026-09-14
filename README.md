@@ -46,3 +46,5 @@ Copy `.env.example` to `.env` and provide strong secrets.
 
 ```powershell
 docker compose up -d postgres redis
+---
+Developed & Managed by Bhanuday Urmaliya — Full Stack Developer
