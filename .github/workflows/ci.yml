@@ -1,0 +1,88 @@
+name: Amrutam Telemedicine CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: amrutam
+          POSTGRES_USER: amrutam
+          POSTGRES_PASSWORD: amrutam_ci_password
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd="pg_isready -U amrutam -d amrutam"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://amrutam:amrutam_ci_password@localhost:5433/amrutam
+      REDIS_URL: redis://localhost:6379/0
+      APP_NAME: Amrutam Telemedicine API
+      APP_ENV: test
+      DEBUG: "false"
+      JWT_SECRET_KEY: ci-only-jwt-secret-change-in-production-123456789
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: "15"
+      REFRESH_TOKEN_EXPIRE_DAYS: "30"
+      MFA_ENCRYPTION_KEY: 9e3b6e5f3d6f2d2a8f1e7d0c1f5e3b7a0d5c8f2a6b4d1e7f9c3a5b8d2e6f0a1
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173
+      OTEL_ENABLED: "false"
+      OTEL_SERVICE_NAME: amrutam-telemedicine-api
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:4317
+      RATE_LIMIT_ENABLED: "true"
+      MAX_FAILED_LOGIN_ATTEMPTS: "5"
+      ACCOUNT_LOCKOUT_MINUTES: "15"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Compile
+        run: |
+          python -m compileall -q app tests
+
+      - name: Apply migrations
+        run: |
+          alembic upgrade head
+
+      - name: Run tests
+        run: |
+          pytest -q --cov=app --cov-report=term-missing
+
+      - name: Dependency audit
+        run: |
+          pip-audit

@@ -1,0 +1,111 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: amrutam-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: amrutam
+      POSTGRES_USER: amrutam
+      POSTGRES_PASSWORD: amrutam_dev_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - amrutam_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U amrutam -d amrutam"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    container_name: amrutam-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - amrutam_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: amrutam-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://amrutam:amrutam_dev_password@postgres:5432/amrutam
+      REDIS_URL: redis://redis:6379/0
+      APP_NAME: Amrutam Telemedicine API
+      APP_ENV: production
+      DEBUG: "false"
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-30}
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      OTEL_ENABLED: ${OTEL_ENABLED:-false}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-amrutam-telemedicine-api}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4317}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      MAX_FAILED_LOGIN_ATTEMPTS: ${MAX_FAILED_LOGIN_ATTEMPTS:-5}
+      ACCOUNT_LOCKOUT_MINUTES: ${ACCOUNT_LOCKOUT_MINUTES:-15}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: amrutam-worker
+    restart: unless-stopped
+    command:
+      [
+        "celery",
+        "-A",
+        "app.workers.celery_app.celery_app",
+        "worker",
+        "--loglevel=INFO",
+        "--concurrency=2"
+      ]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://amrutam:amrutam_dev_password@postgres:5432/amrutam
+      REDIS_URL: redis://redis:6379/0
+      APP_NAME: Amrutam Telemedicine Worker
+      APP_ENV: production
+      DEBUG: "false"
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-30}
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      OTEL_ENABLED: "false"
+      OTEL_SERVICE_NAME: amrutam-telemedicine-worker
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4317}
+      RATE_LIMIT_ENABLED: "false"
+      MAX_FAILED_LOGIN_ATTEMPTS: ${MAX_FAILED_LOGIN_ATTEMPTS:-5}
+      ACCOUNT_LOCKOUT_MINUTES: ${ACCOUNT_LOCKOUT_MINUTES:-15}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+
+volumes:
+  amrutam_postgres_data:
+  amrutam_redis_data:
+

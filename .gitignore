@@ -1,0 +1,85 @@
+# Python
+
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.Python
+
+# Virtual environment
+
+.venv/
+venv/
+env/
+ENV/
+
+# Packaging
+
+build/
+dist/
+*.egg-info/
+
+# Testing / coverage
+
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Type checking
+
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Ruff
+
+.ruff_cache/
+
+# Environment / secrets
+
+.env
+.env.*
+!.env.example
+
+# IDEs
+
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+
+.DS_Store
+Thumbs.db
+
+# Logs
+
+*.log
+logs/
+
+# Local databases / volumes
+
+*.sqlite
+*.sqlite3
+
+# Terraform
+
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Docker
+
+docker-data/
+
